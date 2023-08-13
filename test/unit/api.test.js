@@ -69,5 +69,83 @@ describe('API Unit test Suite', () => {
         `should receive ${JSON.stringify(expectedResponse)}, actual: ${getFirstCallArg(outputResponse.end.mock)}`
       )
     })
+
+    it('should login successfully given user and password', async (context) => {
+      const inputRequest = mockRequest({
+        url: '/login',
+        method: 'POST',
+        body: {
+          user: 'erickwendel',
+          password: '123'
+        }
+      })
+      const outputResponse = mockResponse({
+        mockContext: context.mock
+      })
+
+      await handler(inputRequest, outputResponse)
+
+      // console.log(
+      //   getFirstCallArg(outputResponse.end.mock)
+      // )
+
+      assert.strictEqual(outputResponse.end.mock.callCount(), 1, 'should call response.end once')
+      assert.ok(
+        JSON.parse(getFirstCallArg(outputResponse.end.mock)).token.length > 20,
+        `response.body should be a valid jwt token, actual: ${getFirstCallArg(outputResponse.end.mock)}`
+      )
+
+      _globalToken = JSON.parse(getFirstCallArg(outputResponse.end.mock)).token
+    })
+  })
+
+  describe('/', () => {
+    it('should not be allowed to access private data without a token', async (context) => {
+      const inputRequest = mockRequest({
+        headers: {
+          authorization: ''
+        }
+      })
+      const outputResponse = mockResponse({
+        mockContext: context.mock
+      })
+
+      await handler(inputRequest, outputResponse)
+
+      assert.strictEqual(
+        getFirstCallArg(outputResponse.writeHead.mock),
+        400,
+        `should receive 400 status code, received ${getFirstCallArg(outputResponse.writeHead.mock)}`
+      )
+
+      const expectedResponse = JSON.stringify({ error: 'invalid token!' })
+      assert.strictEqual(outputResponse.end.mock.callCount(), 1, 'should call response.end once')
+      assert.deepStrictEqual(
+        getFirstCallArg(outputResponse.end.mock),
+        expectedResponse,
+        `should receive ${JSON.stringify(expectedResponse)}, actual: ${getFirstCallArg(outputResponse.end.mock)}`
+      )
+    })
+
+    it('should be allowed to access private data with a valid token', async (context) => {
+      const inputRequest = mockRequest({
+        headers: {
+          authorization: _globalToken
+        }
+      })
+      const outputResponse = mockResponse({
+        mockContext: context.mock
+      })
+
+      await handler(inputRequest, outputResponse)
+
+      const expectedResponse = JSON.stringify({ result: 'Hey welcome!' })
+      assert.strictEqual(outputResponse.end.mock.callCount(), 1, 'should call response.end once')
+      assert.deepStrictEqual(
+        getFirstCallArg(outputResponse.end.mock),
+        expectedResponse,
+        `should receive ${JSON.stringify(expectedResponse)}, actual: ${getFirstCallArg(outputResponse.end.mock)}`
+      )
+    })
   })
 })
